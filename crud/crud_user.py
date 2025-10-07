@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, update
 from db.models import User
-from schemas.user import UserCreate
+from schemas.user import UserCreate, UserUpdate
 from core.security import get_password_hash
 
 def get_user_by_email(db: Session, email: str) -> User | None:
@@ -27,3 +27,13 @@ def create_user(db: Session, user_in: UserCreate) -> User:
     db.refresh(db_user)
     return db_user
 
+def update_user(db: Session, db_user: User, user_in: UserUpdate) -> User:
+    """Updates a user's information."""
+    update_data = user_in.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_user, field, value)
+    
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user

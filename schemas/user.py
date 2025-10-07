@@ -1,5 +1,6 @@
 import uuid
 from pydantic import BaseModel, EmailStr
+from typing import Optional
 
 # Shared properties
 class UserBase(BaseModel):
@@ -11,13 +12,19 @@ class UserCreate(UserBase):
     password: str
 
 # Properties to receive via API on update
-class UserUpdate(UserBase):
-    pass
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+
+# Properties for changing password
+class PasswordUpdate(BaseModel):
+    current_password: str
+    new_password: str
 
 # Properties stored in DB
 class UserInDB(UserBase):
     id: uuid.UUID
-    hashed_password: str
+    password_hash: str
 
     class Config:
         from_attributes = True
