@@ -1,4 +1,5 @@
 from typing import List
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from schemas import project as project_schema
@@ -33,7 +34,7 @@ def create_new_project(
 
 @router.get("/{project_id}", response_model=project_schema.Project)
 def get_single_project(
-    project_id: str,
+    project_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -47,3 +48,20 @@ def get_single_project(
         raise HTTPException(status_code=403, detail="Not authorized to access this project")
     return project
 
+@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user_project(
+    project_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Delete a project owned by the current user.
+    """
+    project = crud_project.get_project(db, project_id=project_id)
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+    if project.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this project")
+    
+    crud_project.delete_project(db, project_id=project_id)
+    return
