@@ -1,11 +1,16 @@
 import uuid
+import enum
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, ForeignKey, Enum as SQLAlchemyEnum
+from sqlalchemy import (
+    Column, String, DateTime, ForeignKey, Enum as SQLAlchemyEnum,
+    Boolean, Table
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
-import enum
 
 from .base import Base
+
+# --- Enums ---
 
 class IssueStatus(str, enum.Enum):
     TODO = "To Do"
@@ -26,6 +31,23 @@ class IssueType(str, enum.Enum):
     STORY = "Story"
     EPIC = "Epic"
 
+class ProjectRole(str, enum.Enum):
+    ADMIN = "Admin" # For superuser passthrough
+    PROJECT_LEAD = "Project Lead"
+    MEMBER = "Member"
+
+# --- Association Model ---
+
+class ProjectMember(Base):
+    __tablename__ = 'project_members'
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id', ondelete="CASCADE"), primary_key=True)
+    project_id = Column(UUID(as_uuid=True), ForeignKey('projects.id', ondelete="CASCADE"), primary_key=True)
+    role = Column(SQLAlchemyEnum(ProjectRole), nullable=False, default=ProjectRole.MEMBER)
+
+    user = relationship("User", back_populates="memberships")
+    project = relationship("Project", back_populates="memberships")
+
+# --- Main Models ---
 
 class User(Base):
     __tablename__ = "users"
@@ -34,9 +56,11 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     full_name = Column(String, nullable=True)
     password_hash = Column(String, nullable=False)
+    is_superuser = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    projects = relationship("Project", back_populates="owner")
+    memberships = relationship("ProjectMember", back_populates="user", cascade="all, delete-orphan")
+    
     reported_issues = relationship("Issue", back_populates="reporter", foreign_keys="[Issue.reporter_id]")
     assigned_issues = relationship("Issue", back_populates="assignee", foreign_keys="[Issue.assignee_id]")
 
@@ -48,10 +72,9 @@ class Project(Base):
     name = Column(String, nullable=False)
     key = Column(String(4), nullable=False)
     description = Column(String, nullable=True)
-    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    owner = relationship("User", back_populates="projects")
+    memberships = relationship("ProjectMember", back_populates="project", cascade="all, delete-orphan")
     issues = relationship("Issue", back_populates="project", cascade="all, delete-orphan")
 
 
@@ -65,7 +88,7 @@ class Issue(Base):
     priority = Column(SQLAlchemyEnum(IssuePriority, name="issue_priority_enum"), nullable=False, default=IssuePriority.MEDIUM)
     issue_type = Column(SQLAlchemyEnum(IssueType, name="issue_type_enum"), nullable=False, default=IssueType.TASK)
 
-    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
     reporter_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     assignee_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
 

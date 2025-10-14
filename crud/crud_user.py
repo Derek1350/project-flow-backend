@@ -1,8 +1,13 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import select, update
+from sqlalchemy import select
+import uuid
 from db.models import User
 from schemas.user import UserCreate, UserUpdate
 from core.security import get_password_hash
+
+def get_user(db: Session, user_id: uuid.UUID) -> User | None:
+    """Gets a user from the database by their ID."""
+    return db.query(User).filter(User.id == user_id).first()
 
 def get_user_by_email(db: Session, email: str) -> User | None:
     """Gets a user from the database by their email address."""

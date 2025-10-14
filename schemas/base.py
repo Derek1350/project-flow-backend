@@ -18,3 +18,9 @@ class IssueType(str, Enum):
     BUG = "Bug"
     STORY = "Story"
     EPIC = "Epic"
+
+class ProjectRole(str, Enum):
+    ADMIN = "Admin"
+    PROJECT_LEAD = "Project Lead"
+    MEMBER = "Member"
+

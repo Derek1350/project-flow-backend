@@ -1,67 +1,71 @@
 from typing import List
-import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from schemas import project as project_schema
-from api.deps import get_db, get_current_user
-from db.models import User
+from api.deps import get_db, get_current_user, require_role, get_current_superuser
+from db.models import User, ProjectRole
 import crud.crud_project as crud_project
+import crud.crud_member as crud_member
 
 router = APIRouter()
 
-@router.get("", response_model=List[project_schema.Project])
+
+@router.get("", response_model=List[project_schema.ProjectWithDetails])
 def get_user_projects(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Retrieve all projects for the current user.
+    Retrieve all projects the current user is a member of.
+    Admins see all projects.
     """
-    projects = crud_project.get_projects_by_owner(db, owner_id=current_user.id)
+    if current_user.is_superuser:
+        projects = crud_project.get_all_projects(db)
+    else:
+        projects = crud_project.get_projects_for_user(db, user_id=current_user.id)
     return projects
+
 
 @router.post("", response_model=project_schema.Project, status_code=status.HTTP_201_CREATED)
 def create_new_project(
     project_in: project_schema.ProjectCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_superuser),
 ):
     """
-    Create a new project owned by the current user.
+    Create a new project. The creator becomes the Project Lead.
+    Only accessible by superusers (admins).
     """
-    project = crud_project.create_project(db, project_in=project_in, owner_id=current_user.id)
+    project = crud_project.create_project(db, project_in=project_in, admin_user_id=current_user.id)
     return project
 
-@router.get("/{project_id}", response_model=project_schema.Project)
+
+@router.get("/{project_id}", response_model=project_schema.Project, dependencies=[Depends(require_role([ProjectRole.ADMIN, ProjectRole.PROJECT_LEAD, ProjectRole.MEMBER]))])
 def get_single_project(
-    project_id: uuid.UUID,
+    project_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
 ):
     """
-    Retrieve a single project by its ID.
+    Retrieve a single project by its ID. User must be a member.
     """
     project = crud_project.get_project(db, project_id=project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    if project.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to access this project")
     return project
 
-@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user_project(
-    project_id: uuid.UUID,
+
+@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role([ProjectRole.ADMIN, ProjectRole.PROJECT_LEAD]))])
+def delete_project(
+    project_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
 ):
     """
-    Delete a project owned by the current user.
+    Delete a project. Only accessible by the project's Project Lead or an Admin.
     """
     project = crud_project.get_project(db, project_id=project_id)
     if not project:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
-    if project.owner_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this project")
+        raise HTTPException(status_code=status.HTTP_404, detail="Project not found")
     
     crud_project.delete_project(db, project_id=project_id)
     return
+
