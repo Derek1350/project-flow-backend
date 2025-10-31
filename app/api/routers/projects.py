@@ -53,13 +53,13 @@ def get_single_project(
     return project
 
 
-@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role([ProjectRole.ADMIN, ProjectRole.PROJECT_LEAD]))])
+@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(get_current_superuser)])
 def delete_project(
     project_id: str,
     db: Session = Depends(get_db),
 ):
     """
-    Delete a project. Only accessible by the project's Project Lead or an Admin.
+    Delete a project. Only accessible by a Super Admin.
     """
     project = crud_project.get_project(db, project_id=project_id)
     if not project:
@@ -67,4 +67,3 @@ def delete_project(
     
     crud_project.delete_project(db, project_id=project_id)
     return
-

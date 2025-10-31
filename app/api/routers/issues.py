@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from ...schemas import issue as issue_schema
 from ...schemas.base import IssueStatus, IssueType # Import Enums
-from ...api.deps import get_db, get_current_user, require_role
+from ...api.deps import get_db, get_current_user, require_role, require_issue_role # Import new dependency
 from ...db.models import User, ProjectRole, ProjectMember # Import ProjectMember
 from ...crud import crud_issue, crud_member # Import crud_member
 
@@ -120,8 +120,9 @@ def delete_existing_issue(
         raise HTTPException(status_code=404, detail="Issue not found")
 
     # Use the require_role dependency to check permissions for the issue's project
-    project_permission_checker = require_role([ProjectRole.ADMIN, ProjectRole.PROJECT_LEAD])
-    project_permission_checker(project_id=issue.project_id, current_user=current_user, db=db)
+    # This is tricky since it's a factory. Let's use our new dependency.
+    project_permission_checker = require_issue_role([ProjectRole.ADMIN, ProjectRole.PROJECT_LEAD])
+    project_permission_checker(issue_id=issue_id, current_user=current_user, db=db)
 
     crud_issue.delete_issue(db, issue_id=issue_id)
     return
@@ -132,7 +133,8 @@ def delete_existing_issue(
 def approve_proposal(
     issue_id: UUID,
     db: Session = Depends(get_db),
-    current_member: ProjectMember = Depends(require_role([ProjectRole.ADMIN, ProjectRole.PROJECT_LEAD])),
+    # Use the new dependency
+    current_member: ProjectMember = Depends(require_issue_role([ProjectRole.ADMIN, ProjectRole.PROJECT_LEAD])),
 ):
     """Approve a proposed issue, moving it to 'To Do'."""
     issue = crud_issue.get_issue(db, issue_id=issue_id)
@@ -148,7 +150,8 @@ def approve_proposal(
 def reject_proposal(
     issue_id: UUID,
     db: Session = Depends(get_db),
-    current_member: ProjectMember = Depends(require_role([ProjectRole.ADMIN, ProjectRole.PROJECT_LEAD])),
+    # Use the new dependency
+    current_member: ProjectMember = Depends(require_issue_role([ProjectRole.ADMIN, ProjectRole.PROJECT_LEAD])),
 ):
     """Reject a proposed issue, deleting it."""
     issue = crud_issue.get_issue(db, issue_id=issue_id)
@@ -181,7 +184,8 @@ def request_assignment(
 def approve_assignment(
     issue_id: UUID,
     db: Session = Depends(get_db),
-    current_member: ProjectMember = Depends(require_role([ProjectRole.ADMIN, ProjectRole.PROJECT_LEAD])),
+    # Use the new dependency
+    current_member: ProjectMember = Depends(require_issue_role([ProjectRole.ADMIN, ProjectRole.PROJECT_LEAD])),
 ):
     """Approve a pending assignment request."""
     issue = crud_issue.get_issue(db, issue_id=issue_id)
@@ -196,7 +200,8 @@ def approve_assignment(
 def reject_assignment(
     issue_id: UUID,
     db: Session = Depends(get_db),
-    current_member: ProjectMember = Depends(require_role([ProjectRole.ADMIN, ProjectRole.PROJECT_LEAD])),
+    # Use the new dependency
+    current_member: ProjectMember = Depends(require_issue_role([ProjectRole.ADMIN, ProjectRole.PROJECT_LEAD])),
 ):
     """Reject a pending assignment request."""
     issue = crud_issue.get_issue(db, issue_id=issue_id)
