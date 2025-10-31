@@ -11,30 +11,30 @@ from sqlalchemy.dialects.postgresql import UUID
 from .base import Base
 
 # --- Enums ---
-
 class IssueStatus(str, enum.Enum):
-    TODO = "To Do"
-    IN_PROGRESS = "In Progress"
-    IN_REVIEW = "In Review"
-    DONE = "Done"
+    PROPOSED = "PROPOSED"
+    TODO = "TO_DO"
+    IN_PROGRESS = "IN_PROGRESS"
+    IN_REVIEW = "IN_REVIEW"
+    DONE = "DONE"
 
 class IssuePriority(str, enum.Enum):
-    LOWEST = "Lowest"
-    LOW = "Low"
-    MEDIUM = "Medium"
-    HIGH = "High"
-    HIGHEST = "Highest"
+    LOWEST = "LOWEST"
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    HIGHEST = "HIGHEST"
 
 class IssueType(str, enum.Enum):
-    TASK = "Task"
-    BUG = "Bug"
-    STORY = "Story"
-    EPIC = "Epic"
+    TASK = "TASK"
+    BUG = "BUG"
+    STORY = "STORY"
+    EPIC = "EPIC"
 
 class ProjectRole(str, enum.Enum):
-    ADMIN = "Admin" # For superuser passthrough
-    PROJECT_LEAD = "Project Lead"
-    MEMBER = "Member"
+    ADMIN = "ADMIN"
+    PROJECT_LEAD = "PROJECT_LEAD"
+    MEMBER = "MEMBER"
 
 # --- Association Model ---
 
@@ -86,10 +86,9 @@ class Issue(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
-    status = Column(SQLAlchemyEnum(IssueStatus, name="issue_status_enum"), nullable=False, default=IssueStatus.TODO)
+    status = Column(SQLAlchemyEnum(IssueStatus, name="issue_status_enum"), nullable=False, default=IssueStatus.PROPOSED)
     priority = Column(SQLAlchemyEnum(IssuePriority, name="issue_priority_enum"), nullable=False, default=IssuePriority.MEDIUM)
     issue_type = Column(SQLAlchemyEnum(IssueType, name="issue_type_enum"), nullable=False, default=IssueType.TASK)
-
     project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
     reporter_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     assignee_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
@@ -103,5 +102,4 @@ class Issue(Base):
     project = relationship("Project", back_populates="issues")
     reporter = relationship("User", back_populates="reported_issues", foreign_keys=[reporter_id])
     assignee = relationship("User", back_populates="assigned_issues", foreign_keys=[assignee_id])
-    # New relationship to load the user who made the request
     requester = relationship("User", back_populates="requested_issues", foreign_keys=[assignee_request_id])

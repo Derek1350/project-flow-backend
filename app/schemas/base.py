@@ -1,26 +1,26 @@
 from enum import Enum
 
 class IssueStatus(str, Enum):
-    TODO = "To Do"
-    IN_PROGRESS = "In Progress"
-    IN_REVIEW = "In Review"
-    DONE = "Done"
+    PROPOSED = "PROPOSED"
+    TODO = "TO_DO"
+    IN_PROGRESS = "IN_PROGRESS"
+    IN_REVIEW = "IN_REVIEW"
+    DONE = "DONE"
 
 class IssuePriority(str, Enum):
-    LOWEST = "Lowest"
-    LOW = "Low"
-    MEDIUM = "Medium"
-    HIGH = "High"
-    HIGHEST = "Highest"
+    LOWEST = "LOWEST"
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    HIGHEST = "HIGHEST"
 
 class IssueType(str, Enum):
-    TASK = "Task"
-    BUG = "Bug"
-    STORY = "Story"
-    EPIC = "Epic"
+    TASK = "TASK"
+    BUG = "BUG"
+    STORY = "STORY"
+    EPIC = "EPIC"
 
 class ProjectRole(str, Enum):
-    ADMIN = "Admin"
-    PROJECT_LEAD = "Project Lead"
-    MEMBER = "Member"
-
+    ADMIN = "ADMIN"
+    PROJECT_LEAD = "PROJECT_LEAD"
+    MEMBER = "MEMBER"

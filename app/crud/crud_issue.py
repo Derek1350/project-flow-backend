@@ -30,9 +30,9 @@ def create_issue(db: Session, issue_in: issue_schema.IssueCreate, reporter_id: u
     db_issue = Issue(
         title=issue_in.title,
         description=issue_in.description,
-        status=issue_in.status,
-        priority=issue_in.priority,
-        issue_type=issue_in.issue_type,
+        status=issue_in.status.value,
+        priority=issue_in.priority.value, # Be consistent for all enums
+        issue_type=issue_in.issue_type.value, # Be consistent for all enums
         project_id=issue_in.project_id,
         reporter_id=reporter_id,
         assignee_id=issue_in.assignee_id
@@ -47,15 +47,22 @@ def update_issue(db: Session, db_obj: Issue, obj_in: issue_schema.IssueUpdate) -
     Update an existing issue.
     """
     update_data = obj_in.model_dump(exclude_unset=True)
-    
+
     for field in update_data:
-        setattr(db_obj, field, update_data[field])
-        
+        value = update_data[field]
+        # Check if the field is one of our enums and use its value
+        if field == 'status' and value is not None:
+            value = value.value
+        elif field == 'priority' and value is not None:
+            value = value.value
+        elif field == 'issue_type' and value is not None:
+            value = value.value
+        setattr(db_obj, field, value)
+
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)
     return db_obj
-
 def delete_issue(db: Session, issue_id: uuid.UUID) -> Issue | None:
     """
     Delete an issue by its ID.

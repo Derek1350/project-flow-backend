@@ -10,7 +10,7 @@ class IssueCreate(BaseModel):
     title: str
     description: Optional[str] = None
     project_id: uuid.UUID
-    status: IssueStatus = IssueStatus.TODO
+    status: IssueStatus = IssueStatus.PROPOSED # Changed default from TODO to PROPOSED
     priority: IssuePriority = IssuePriority.MEDIUM
     issue_type: IssueType = IssueType.TASK
     assignee_id: Optional[uuid.UUID] = None

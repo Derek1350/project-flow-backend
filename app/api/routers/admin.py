@@ -20,6 +20,24 @@ def get_all_users(
     """
     return crud_user.get_users(db)
 
+@router.post("/admin/users", response_model=user_schema.User, status_code=status.HTTP_201_CREATED)
+def create_new_user(
+    user_in: user_schema.UserCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+):
+    """
+    Create new user. Admin only.
+    """
+    user = crud_user.get_user_by_email(db, email=user_in.email)
+    if user:
+        raise HTTPException(
+            status_code=400,
+            detail="The user with this email already exists in the system.",
+        )
+    user = crud_user.create_user(db, user_in=user_in)
+    return user
+
 @router.put("/admin/users/{user_id}", response_model=user_schema.User)
 def update_user_privileges(
     user_id: uuid.UUID,
