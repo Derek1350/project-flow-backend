@@ -35,7 +35,9 @@ def create_issue(db: Session, issue_in: issue_schema.IssueCreate, reporter_id: u
         issue_type=issue_in.issue_type.value, # Be consistent for all enums
         project_id=issue_in.project_id,
         reporter_id=reporter_id,
-        assignee_id=issue_in.assignee_id
+        assignee_id=issue_in.assignee_id,
+        start_date=issue_in.start_date,  # Add start_date
+        due_date=issue_in.due_date        # Add due_date
     )
     db.add(db_issue)
     db.commit()
@@ -57,6 +59,8 @@ def update_issue(db: Session, db_obj: Issue, obj_in: issue_schema.IssueUpdate) -
             value = value.value
         elif field == 'issue_type' and value is not None:
             value = value.value
+        
+        # This will correctly handle date fields (as date objects) and other fields
         setattr(db_obj, field, value)
 
     db.add(db_obj)

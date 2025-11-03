@@ -4,6 +4,8 @@ from datetime import datetime
 from typing import Optional, Annotated, List
 
 from .user import User as UserSchema
+from .issue import Issue  # <-- IMPORT ISSUE SCHEMA
+from .member import ProjectMemberRead  # <-- IMPORT MEMBER SCHEMA
 
 # Shared properties
 class ProjectBase(BaseModel):
@@ -45,4 +47,5 @@ class ProjectWithDetails(Project):
     issue_summary: IssueSummary
     project_lead: Optional[UserSchema] = None
     progress: float
-
+    members: List[ProjectMemberRead] = []  # <-- ADDED
+    issues: List[Issue] = []               # <-- ADDED

@@ -10,7 +10,7 @@ class IssueCreate(BaseModel):
     title: str
     description: Optional[str] = None
     project_id: uuid.UUID
-    status: IssueStatus = IssueStatus.PROPOSED # Changed default from TODO to PROPOSED
+    status: IssueStatus = IssueStatus.PROPOSED
     priority: IssuePriority = IssuePriority.MEDIUM
     issue_type: IssueType = IssueType.TASK
     assignee_id: Optional[uuid.UUID] = None
@@ -52,4 +52,6 @@ class IssueInDBBase(BaseModel):
 
 # Properties to return to client
 class Issue(IssueInDBBase):
-    requester: Optional[UserSchema] = None # Add nested requester user object
+    reporter: Optional[UserSchema] = None # <-- ADDED
+    assignee: Optional[UserSchema] = None # <-- ADDED
+    requester: Optional[UserSchema] = None

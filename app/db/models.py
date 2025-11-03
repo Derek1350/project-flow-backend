@@ -3,7 +3,7 @@ import enum
 from datetime import datetime
 from sqlalchemy import (
     Column, String, DateTime, ForeignKey, Enum as SQLAlchemyEnum,
-    Boolean, Table
+    Boolean, Table, Date  # Added Date
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -13,7 +13,7 @@ from .base import Base
 # --- Enums ---
 class IssueStatus(str, enum.Enum):
     PROPOSED = "PROPOSED"
-    TODO = "TO_DO"
+    TO_DO = "TO_DO"
     IN_PROGRESS = "IN_PROGRESS"
     IN_REVIEW = "IN_REVIEW"
     DONE = "DONE"
@@ -95,6 +95,11 @@ class Issue(Base):
     
     # New column to track who requested the issue
     assignee_request_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+    # --- NEW DATE COLUMNS ---
+    start_date = Column(Date, nullable=True)
+    due_date = Column(Date, nullable=True)
+    # --- END NEW DATE COLUMNS ---
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException, status
-from ..db.models import Project, ProjectMember, ProjectRole, IssueStatus, User
+from ..db.models import Project, ProjectMember, ProjectRole, IssueStatus, User, Issue
 from ..schemas import project as project_schema
 from typing import List
 from . import crud_user
@@ -9,7 +9,7 @@ from . import crud_user
 def _build_project_details(project: Project) -> project_schema.ProjectWithDetails:
     issue_summary = {
         "total": len(project.issues),
-        "todo": sum(1 for i in project.issues if i.status == IssueStatus.TODO),
+        "todo": sum(1 for i in project.issues if i.status == IssueStatus.TO_DO),
         "in_progress": sum(1 for i in project.issues if i.status == IssueStatus.IN_PROGRESS),
         "in_review": sum(1 for i in project.issues if i.status == IssueStatus.IN_REVIEW),
         "done": sum(1 for i in project.issues if i.status == IssueStatus.DONE),
@@ -22,11 +22,18 @@ def _build_project_details(project: Project) -> project_schema.ProjectWithDetail
     progress = (issue_summary['done'] / issue_summary['total'] * 100) if issue_summary['total'] > 0 else 0
 
 
+    # --- FIX HERE: Explicitly pass fields instead of **project.__dict__ ---
     return project_schema.ProjectWithDetails(
-        **project.__dict__,
+        id=project.id,
+        name=project.name,
+        key=project.key,
+        description=project.description,
+        created_at=project.created_at,
         issue_summary=issue_summary,
         project_lead=project_lead,
         progress=progress,
+        members=project.memberships,
+        issues=project.issues
     )
 
 def get_project(db: Session, project_id: str):
@@ -43,7 +50,9 @@ def get_projects_for_user(db: Session, user_id: str) -> List[project_schema.Proj
         db.query(Project)
         .options(
             joinedload(Project.memberships).joinedload(ProjectMember.user),
-            joinedload(Project.issues)
+            joinedload(Project.issues).joinedload(Issue.assignee),
+            joinedload(Project.issues).joinedload(Issue.reporter),
+            joinedload(Project.issues).joinedload(Issue.requester)
         )
         .join(ProjectMember)
         .filter(ProjectMember.user_id == user_id)
@@ -59,7 +68,9 @@ def get_all_projects(db: Session) -> List[project_schema.ProjectWithDetails]:
         db.query(Project)
         .options(
             joinedload(Project.memberships).joinedload(ProjectMember.user),
-            joinedload(Project.issues)
+            joinedload(Project.issues).joinedload(Issue.assignee),
+            joinedload(Project.issues).joinedload(Issue.reporter),
+            joinedload(Project.issues).joinedload(Issue.requester)
         )
         .all()
     )
@@ -116,4 +127,3 @@ def delete_project(db: Session, project_id: str):
         db.delete(project)
         db.commit()
     return project
-
