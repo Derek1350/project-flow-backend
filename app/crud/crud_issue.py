@@ -1,7 +1,12 @@
 import uuid
 from sqlalchemy.orm import Session, joinedload
 from ..schemas import issue as issue_schema
+
+# --- FIX: Import Enums from the db.models file to avoid conflicts ---
 from ..db.models import Issue, User
+from ..db.models import IssueStatus as DB_IssueStatus
+from ..db.models import IssuePriority as DB_IssuePriority
+from ..db.models import IssueType as DB_IssueType
 
 def get_issue(db: Session, issue_id: uuid.UUID) -> Issue | None:
     """
@@ -30,14 +35,15 @@ def create_issue(db: Session, issue_in: issue_schema.IssueCreate, reporter_id: u
     db_issue = Issue(
         title=issue_in.title,
         description=issue_in.description,
-        status=issue_in.status.value,
-        priority=issue_in.priority.value, # Be consistent for all enums
-        issue_type=issue_in.issue_type.value, # Be consistent for all enums
+        # --- FIX: Explicitly convert the schema enum's *value* (str) into the DB model's enum ---
+        status=DB_IssueStatus(issue_in.status.value),
+        priority=DB_IssuePriority(issue_in.priority.value),
+        issue_type=DB_IssueType(issue_in.issue_type.value),
         project_id=issue_in.project_id,
         reporter_id=reporter_id,
         assignee_id=issue_in.assignee_id,
-        start_date=issue_in.start_date,  # Add start_date
-        due_date=issue_in.due_date        # Add due_date
+        start_date=issue_in.start_date,
+        due_date=issue_in.due_date
     )
     db.add(db_issue)
     db.commit()
@@ -50,23 +56,22 @@ def update_issue(db: Session, db_obj: Issue, obj_in: issue_schema.IssueUpdate) -
     """
     update_data = obj_in.model_dump(exclude_unset=True)
 
-    for field in update_data:
-        value = update_data[field]
-        # Check if the field is one of our enums and use its value
+    for field, value in update_data.items():
+        # --- FIX: Explicitly convert schema enum's *value* (str) into the DB model's enum ---
         if field == 'status' and value is not None:
-            value = value.value
+            value = DB_IssueStatus(value.value)
         elif field == 'priority' and value is not None:
-            value = value.value
+            value = DB_IssuePriority(value.value)
         elif field == 'issue_type' and value is not None:
-            value = value.value
+            value = DB_IssueType(value.value)
         
-        # This will correctly handle date fields (as date objects) and other fields
         setattr(db_obj, field, value)
 
     db.add(db_obj)
     db.commit()
     db.refresh(db_obj)
     return db_obj
+
 def delete_issue(db: Session, issue_id: uuid.UUID) -> Issue | None:
     """
     Delete an issue by its ID.
@@ -104,3 +109,4 @@ def reject_request(db: Session, issue: Issue) -> Issue:
     db.commit()
     db.refresh(issue)
     return issue
+
