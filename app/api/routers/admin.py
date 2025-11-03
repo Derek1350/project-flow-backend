@@ -53,7 +53,7 @@ def update_user_privileges(
         raise HTTPException(status_code=404, detail="User not found")
     
     # Prevent an admin from accidentally removing their own superuser status
-    if current_user.id == db_user.id and not user_in.is_superuser:
+    if current_user.id == db_user.id and user_in.is_superuser is False: # Check for explicit False
         raise HTTPException(status_code=400, detail="Admins cannot remove their own superuser status.")
 
     # Directly update the user object with the provided data
@@ -66,3 +66,47 @@ def update_user_privileges(
     db.refresh(db_user)
     
     return db_user
+
+# --- NEW ENDPOINT for editing details ---
+@router.put("/admin/users/{user_id}/details", response_model=user_schema.User)
+def update_user_details_by_admin(
+    user_id: uuid.UUID,
+    user_in: user_schema.UserAdminFullUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+):
+    """
+    Update a user's details (email, name, password). Admin only.
+    """
+    db_user = crud_user.get_user(db, user_id=user_id)
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # If email is being changed, check if the new one is taken
+    if user_in.email and user_in.email != db_user.email:
+        existing_user = crud_user.get_user_by_email(db, email=user_in.email)
+        if existing_user:
+            raise HTTPException(status_code=400, detail="This email is already registered.")
+
+    # The updated crud_user.update_user function handles password hashing
+    return crud_user.update_user(db, db_user=db_user, user_in=user_in)
+
+
+@router.delete("/admin/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user_by_id(
+    user_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+):
+    """
+    Delete a user. Admin only.
+    """
+    if current_user.id == user_id:
+        raise HTTPException(status_code=400, detail="Admins cannot delete their own account.")
+    
+    db_user = crud_user.get_user(db, user_id=user_id)
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    crud_user.delete_user(db, user_id=user_id)
+    return

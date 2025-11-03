@@ -59,6 +59,11 @@ class User(Base):
     is_superuser = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    # --- NEW NOTIFICATION COLUMNS ---
+    notify_on_assignment = Column(Boolean, default=True)
+    notify_on_proposal = Column(Boolean, default=True)
+    # --- END NEW COLUMNS ---
+
     memberships = relationship("ProjectMember", back_populates="user", cascade="all, delete-orphan")
     
     reported_issues = relationship("Issue", back_populates="reporter", foreign_keys="[Issue.reporter_id]")

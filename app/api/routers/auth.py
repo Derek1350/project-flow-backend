@@ -49,7 +49,8 @@ def update_user_me(
     """
     Update own user.
     """
-    user = crud_user.update_user(db, db_obj=current_user, obj_in=user_in)
+    # --- FIX HERE: Changed 'db_obj' to 'db_user' ---
+    user = crud_user.update_user(db, db_user=current_user, user_in=user_in)
     return user
 
 @router.put("/users/me/password")
@@ -119,7 +120,8 @@ def update_user_me(
     """
     Update own user.
     """
-    user = crud_user.update_user(db, db_obj=current_user, obj_in=user_in)
+    # --- FIX HERE: Changed 'db_obj' to 'db_user' ---
+    user = crud_user.update_user(db, db_user=current_user, user_in=user_in)
     return user
 
 @router.put("/users/me/password")
