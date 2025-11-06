@@ -3,7 +3,7 @@ import enum
 from datetime import datetime
 from sqlalchemy import (
     Column, String, DateTime, ForeignKey, Enum as SQLAlchemyEnum,
-    Boolean, Table, Date  # Added Date
+    Boolean, Table, Date, Integer
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -35,6 +35,19 @@ class ProjectRole(str, enum.Enum):
     ADMIN = "ADMIN"
     PROJECT_LEAD = "PROJECT_LEAD"
     MEMBER = "MEMBER"
+
+class Phase(Base):
+    __tablename__ = "phases"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, nullable=False)
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
+    order = Column(Integer, nullable=False)
+
+    project = relationship("Project", back_populates="phases")
+    issues = relationship("Issue", back_populates="phase") # Issues in this phase
 
 # --- Association Model ---
 
@@ -83,6 +96,9 @@ class Project(Base):
 
     memberships = relationship("ProjectMember", back_populates="project", cascade="all, delete-orphan")
     issues = relationship("Issue", back_populates="project", cascade="all, delete-orphan")
+    
+    # --- ADDED RELATIONSHIP TO PHASE ---
+    phases = relationship("Phase", back_populates="project", cascade="all, delete-orphan", order_by="Phase.order")
 
 
 class Issue(Base):
@@ -98,16 +114,20 @@ class Issue(Base):
     reporter_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     assignee_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     
-    # New column to track who requested the issue
     assignee_request_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
-    # --- NEW DATE COLUMNS ---
     start_date = Column(Date, nullable=True)
     due_date = Column(Date, nullable=True)
-    # --- END NEW DATE COLUMNS ---
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # --- ADDED RELATIONSHIP TO PHASE ---
+    # If a Phase is deleted, the Issue's phase_id is set to NULL.
+    # The issue is not deleted, just becomes "unphased".
+    phase_id = Column(UUID(as_uuid=True), ForeignKey("phases.id", ondelete="SET NULL"), nullable=True)
+    phase = relationship("Phase", back_populates="issues")
+    # --- END OF CHANGE ---
 
     project = relationship("Project", back_populates="issues")
     reporter = relationship("User", back_populates="reported_issues", foreign_keys=[reporter_id])

@@ -16,6 +16,7 @@ class IssueCreate(BaseModel):
     assignee_id: Optional[uuid.UUID] = None
     start_date: Optional[date] = None
     due_date: Optional[date] = None
+    phase_id: Optional[uuid.UUID] = None # <-- ADDED
 
 
 # Properties to receive on issue update - all fields are explicitly optional
@@ -28,6 +29,7 @@ class IssueUpdate(BaseModel):
     assignee_id: Optional[uuid.UUID] = None
     start_date: Optional[date] = None
     due_date: Optional[date] = None
+    phase_id: Optional[uuid.UUID] = None # <-- ADDED
 
 
 # Properties shared by models stored in DB
@@ -41,17 +43,19 @@ class IssueInDBBase(BaseModel):
     project_id: uuid.UUID
     reporter_id: uuid.UUID
     assignee_id: Optional[uuid.UUID] = None
-    assignee_request_id: Optional[uuid.UUID] = None # Add request field
+    assignee_request_id: Optional[uuid.UUID] = None 
     created_at: datetime
     updated_at: datetime
     start_date: Optional[date] = None
     due_date: Optional[date] = None
+    phase_id: Optional[uuid.UUID] = None # <-- ADDED
 
     class Config:
         from_attributes = True
 
 # Properties to return to client
 class Issue(IssueInDBBase):
-    reporter: Optional[UserSchema] = None # <-- ADDED
-    assignee: Optional[UserSchema] = None # <-- ADDED
+    reporter: Optional[UserSchema] = None 
+    assignee: Optional[UserSchema] = None 
     requester: Optional[UserSchema] = None
+    # We can add 'phase: Optional[Phase] = None' here later

@@ -3,12 +3,22 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from ...schemas import issue as issue_schema
-from ...schemas.base import IssueStatus, IssueType # Import Enums
-from ...api.deps import get_db, get_current_user, require_role, require_issue_role # Import new dependency
-from ...db.models import User, ProjectRole, ProjectMember # Import ProjectMember
-from ...crud import crud_issue, crud_member # Import crud_member
+from ...schemas.base import IssueStatus, IssueType
+from ...api.deps import get_db, get_current_user, require_role, require_issue_role
+from ...db.models import User, ProjectRole, ProjectMember
+from ...crud import crud_issue, crud_member
 
 router = APIRouter()
+
+
+def check_admin_assignment(current_user: User, issue_in_assignee_id: UUID | None):
+    """Prevents superusers from being assigned to any issue."""
+    if current_user.is_superuser and issue_in_assignee_id is not None and issue_in_assignee_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Administrators cannot be assigned to issues."
+        )
+
 
 @router.post("", response_model=issue_schema.Issue, status_code=status.HTTP_201_CREATED)
 def create_new_issue(
@@ -21,9 +31,13 @@ def create_new_issue(
     - Members can only propose Tasks or Bugs.
     - Project Leads/Admins can create all types and set status.
     """
+    # ENFORCEMENT POINT 1: Check assignment on creation
+    check_admin_assignment(current_user, issue_in.assignee_id)
+    
     # Check if the user is a member of the project
     member = crud_member.get_project_member(db, project_id=issue_in.project_id, user_id=current_user.id)
     
+    # Allow Superusers to create issues, even if they aren't a formal member
     if not current_user.is_superuser and not member:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this project")
 
@@ -88,6 +102,10 @@ def update_existing_issue(
     if not issue:
         raise HTTPException(status_code=404, detail="Issue not found")
 
+    # ENFORCEMENT POINT 2: Check assignment on update
+    # Check against the proposed new assignee_id
+    check_admin_assignment(current_user, issue_in.assignee_id)
+
     # Check permissions
     member = crud_member.get_project_member(db, project_id=issue.project_id, user_id=current_user.id)
     
@@ -127,7 +145,7 @@ def delete_existing_issue(
     crud_issue.delete_issue(db, issue_id=issue_id)
     return
 
-# --- New Endpoints for Proposal & Assignment Workflows ---
+# --- New Endpoints for Proposal & Assignment Workflows (UNCHANGED) ---
 
 @router.post("/issues/{issue_id}/approve-proposal", response_model=issue_schema.Issue)
 def approve_proposal(

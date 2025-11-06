@@ -35,7 +35,6 @@ def create_issue(db: Session, issue_in: issue_schema.IssueCreate, reporter_id: u
     db_issue = Issue(
         title=issue_in.title,
         description=issue_in.description,
-        # --- FIX: Explicitly convert the schema enum's *value* (str) into the DB model's enum ---
         status=DB_IssueStatus(issue_in.status.value),
         priority=DB_IssuePriority(issue_in.priority.value),
         issue_type=DB_IssueType(issue_in.issue_type.value),
@@ -43,7 +42,8 @@ def create_issue(db: Session, issue_in: issue_schema.IssueCreate, reporter_id: u
         reporter_id=reporter_id,
         assignee_id=issue_in.assignee_id,
         start_date=issue_in.start_date,
-        due_date=issue_in.due_date
+        due_date=issue_in.due_date,
+        phase_id=issue_in.phase_id # <-- ADDED
     )
     db.add(db_issue)
     db.commit()
@@ -57,15 +57,22 @@ def update_issue(db: Session, db_obj: Issue, obj_in: issue_schema.IssueUpdate) -
     update_data = obj_in.model_dump(exclude_unset=True)
 
     for field, value in update_data.items():
-        # --- FIX: Explicitly convert schema enum's *value* (str) into the DB model's enum ---
-        if field == 'status' and value is not None:
+        # ... (enum conversion logic remains the same) ...
+        
+        # --- ADDED: Explicitly handle phase_id ---
+        if field == 'phase_id':
+            setattr(db_obj, 'phase_id', value)
+        elif field == 'status' and value is not None:
             value = DB_IssueStatus(value.value)
+            setattr(db_obj, field, value)
         elif field == 'priority' and value is not None:
             value = DB_IssuePriority(value.value)
+            setattr(db_obj, field, value)
         elif field == 'issue_type' and value is not None:
             value = DB_IssueType(value.value)
-        
-        setattr(db_obj, field, value)
+            setattr(db_obj, field, value)
+        else:
+             setattr(db_obj, field, value)
 
     db.add(db_obj)
     db.commit()

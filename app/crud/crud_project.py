@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException, status
-from ..db.models import Project, ProjectMember, ProjectRole, IssueStatus, User, Issue
+from ..db.models import Project, ProjectMember, ProjectRole, IssueStatus, User, Issue, Phase # <-- 1. IMPORT PHASE
 from ..schemas import project as project_schema
 from typing import List
 from . import crud_user
@@ -22,7 +22,7 @@ def _build_project_details(project: Project) -> project_schema.ProjectWithDetail
     progress = (issue_summary['done'] / issue_summary['total'] * 100) if issue_summary['total'] > 0 else 0
 
 
-    # --- FIX HERE: Explicitly pass fields instead of **project.__dict__ ---
+    # --- 2. ADD 'phases=project.phases' ---
     return project_schema.ProjectWithDetails(
         id=project.id,
         name=project.name,
@@ -33,7 +33,8 @@ def _build_project_details(project: Project) -> project_schema.ProjectWithDetail
         project_lead=project_lead,
         progress=progress,
         members=project.memberships,
-        issues=project.issues
+        issues=project.issues,
+        phases=project.phases # <-- 2. ADDED
     )
 
 def get_project(db: Session, project_id: str):
@@ -52,7 +53,8 @@ def get_projects_for_user(db: Session, user_id: str) -> List[project_schema.Proj
             joinedload(Project.memberships).joinedload(ProjectMember.user),
             joinedload(Project.issues).joinedload(Issue.assignee),
             joinedload(Project.issues).joinedload(Issue.reporter),
-            joinedload(Project.issues).joinedload(Issue.requester)
+            joinedload(Project.issues).joinedload(Issue.requester),
+            joinedload(Project.phases) # <-- 3. EAGER LOAD PHASES
         )
         .join(ProjectMember)
         .filter(ProjectMember.user_id == user_id)
@@ -70,7 +72,8 @@ def get_all_projects(db: Session) -> List[project_schema.ProjectWithDetails]:
             joinedload(Project.memberships).joinedload(ProjectMember.user),
             joinedload(Project.issues).joinedload(Issue.assignee),
             joinedload(Project.issues).joinedload(Issue.reporter),
-            joinedload(Project.issues).joinedload(Issue.requester)
+            joinedload(Project.issues).joinedload(Issue.requester),
+            joinedload(Project.phases) # <-- 4. EAGER LOAD PHASES
         )
         .all()
     )

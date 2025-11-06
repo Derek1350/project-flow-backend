@@ -16,9 +16,10 @@ def get_user_projects(
 ):
     """
     Retrieve all projects the current user is a member of.
-    Admins see all projects.
+    Admins see all projects for overview purposes.
     """
     if current_user.is_superuser:
+        # FIX: Admin now sees ALL projects for full visibility
         projects = crud_project.get_all_projects(db)
     else:
         projects = crud_project.get_projects_for_user(db, user_id=current_user.id)

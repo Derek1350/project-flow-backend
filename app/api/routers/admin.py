@@ -4,11 +4,34 @@ from typing import List
 import uuid
 
 from ...api.deps import get_db, get_current_superuser
-from ...crud import crud_user
+from ...crud import crud_user, crud_admin
 from ...schemas import user as user_schema
+from ...schemas import admin as admin_schema
 from ...db.models import User
 
 router = APIRouter()
+
+@router.get("/admin/dashboard-summary", response_model=admin_schema.ExecutiveDashboardResponse)
+def get_dashboard_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+):
+    """
+    Retrieve summary data for the admin executive dashboard.
+    Admin only.
+    """
+    return crud_admin.get_dashboard_data(db)
+# --- END OF NEW ENDPOINT ---
+
+@router.get("/admin/users", response_model=List[user_schema.User])
+def get_all_users(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
+):
+    """
+    Retrieve all users. Admin only.
+    """
+    return crud_user.get_users(db)
 
 @router.get("/admin/users", response_model=List[user_schema.User])
 def get_all_users(
