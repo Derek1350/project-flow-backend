@@ -9,7 +9,7 @@ from ..schemas import token as token_schema
 from ..db.base import SessionLocal
 from ..db.models import User, ProjectMember, ProjectRole, Issue
 from ..core.config import settings
-from ..crud import crud_user, crud_member, crud_issue
+from ..crud import crud_user, crud_member, crud_issue, crud_phase
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/token")
 
@@ -152,3 +152,45 @@ def require_issue_role(required_roles: List[ProjectRole]):
             
         return member
     return get_member_from_issue_path
+
+def require_phase_role(required_roles: List[ProjectRole]):
+    """
+    Dependency factory to check roles based on a `phase_id` in the path.
+    It fetches the phase, finds its project, and then checks the user's role
+    for that project.
+    """
+    def get_member_from_phase_path(
+        phase_id: UUID = Path(...),
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+    ) -> ProjectMember:
+        
+        # 1. Get the phase from the path
+        phase = crud_phase.get_phase(db, phase_id=phase_id)
+        if not phase:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Phase not found")
+        
+        # 2. Get the project_id from the phase
+        project_id = phase.project_id
+
+        # 3. Check role (similar logic to `require_role`)
+        if current_user.is_superuser:
+            return ProjectMember(
+                user_id=current_user.id,
+                project_id=project_id,
+                role=ProjectRole.ADMIN,
+                user=current_user
+            )
+
+        member = crud_member.get_project_member(db, project_id=project_id, user_id=current_user.id)
+        if not member:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this project")
+        
+        if ProjectRole.ADMIN in required_roles and member.user.is_superuser:
+            return member
+
+        if member.role not in required_roles:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"User role '{member.role.value}' is not authorized for this action")
+            
+        return member
+    return get_member_from_phase_path

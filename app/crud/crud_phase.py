@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List
 
-from ..db.models import Phase
+from ..db.models import Phase,PhaseStatus
 from ..schemas.phase import PhaseCreate, PhaseUpdate, PhaseOrderUpdate
 
 def get_phase(db: Session, phase_id: uuid.UUID) -> Phase | None:
@@ -53,3 +53,19 @@ def update_phases_order(db: Session, project_id: uuid.UUID, order_updates: List[
     
     db.commit()
     return get_phases_by_project(db, project_id=project_id)
+
+def start_phase(db: Session, db_phase: Phase) -> Phase:
+    """Marks a phase as IN_PROGRESS."""
+    db_phase.status = PhaseStatus.IN_PROGRESS
+    db.add(db_phase)
+    db.commit()
+    db.refresh(db_phase)
+    return db_phase
+
+def complete_phase(db: Session, db_phase: Phase) -> Phase:
+    """Marks a phase as COMPLETED."""
+    db_phase.status = PhaseStatus.COMPLETED
+    db.add(db_phase)
+    db.commit()
+    db.refresh(db_phase)
+    return db_phase

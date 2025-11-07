@@ -36,6 +36,11 @@ class ProjectRole(str, enum.Enum):
     PROJECT_LEAD = "PROJECT_LEAD"
     MEMBER = "MEMBER"
 
+class PhaseStatus(str, enum.Enum):
+    NOT_STARTED = "NOT_STARTED"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+
 class Phase(Base):
     __tablename__ = "phases"
 
@@ -45,7 +50,7 @@ class Phase(Base):
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
     order = Column(Integer, nullable=False)
-
+    status = Column(SQLAlchemyEnum(PhaseStatus, name="phase_status_enum"), nullable=False, default=PhaseStatus.NOT_STARTED)
     project = relationship("Project", back_populates="phases")
     issues = relationship("Issue", back_populates="phase") # Issues in this phase
 

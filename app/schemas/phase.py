@@ -2,7 +2,8 @@ import uuid
 from pydantic import BaseModel
 from datetime import date
 from typing import Optional, List
-
+from ..db.models import PhaseStatus
+ 
 # Base properties for a Phase
 class PhaseBase(BaseModel):
     name: str
@@ -24,6 +25,7 @@ class Phase(PhaseBase):
     id: uuid.UUID
     project_id: uuid.UUID
     order: int
+    status: PhaseStatus
 
     class Config:
         from_attributes = True
