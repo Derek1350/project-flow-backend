@@ -6,49 +6,23 @@ from ..crud import crud_project
 from ..db.models import Issue, IssueStatus, Issue 
 from ..schemas import admin as admin_schema
 
-# Helper function definition for phase progress calculation
-def calculate_phase_progress(project):
-    """Calculates project progress based on completed phases."""
-    if not project.phases:
-        # Fallback to issue-based progress if no phases exist
-        return project.progress
-    
-    total_phases = len(project.phases)
-    completed_phases = 0
-
-    for phase in project.phases:
-        issues_in_phase = [i for i in project.issues if i.phase_id == phase.id]
-        if not issues_in_phase:
-            continue
-            
-        total_issues_in_phase = len(issues_in_phase)
-        done_issues_in_phase = sum(1 for i in issues_in_phase if i.status == IssueStatus.DONE)
-        
-        # Consider a phase "completed" if 100% of its issues are done
-        if done_issues_in_phase == total_issues_in_phase and total_issues_in_phase > 0:
-            completed_phases += 1
-
-    return (completed_phases / total_phases * 100) if total_phases > 0 else 0
-
 def get_dashboard_data(db: Session) -> admin_schema.ExecutiveDashboardResponse:
     """
     Gathers and processes data for the Executive Dashboard.
     """
     all_projects = crud_project.get_all_projects(db)
 
-    # Calculate Phase-based Progress for all projects
-    for project in all_projects:
-        project.phase_progress = calculate_phase_progress(project) 
+    # Note: project.progress in each ProjectWithDetails object is already the phase-based
+    # project progress, calculated in crud_project._build_project_details.
 
     # 1. --- Stats Card Data ---
     total_projects = len(all_projects)
-    completed_projects = sum(1 for p in all_projects if p.progress == 100) 
+    # Project is completed if phase-based progress is 100%
+    completed_projects = sum(1 for p in all_projects if round(p.progress) >= 100) 
 
-    # NEW: Define status based on progress (using simple thresholds for now)
     on_track_projects = sum(1 for p in all_projects if p.progress >= 75 and p.progress < 100)
     delayed_projects = sum(1 for p in all_projects if p.progress < 75 and p.progress > 0)
     
-    # Calculate percentages safely
     def get_percentage(count, total):
         return f"{int((count / total) * 100) if total > 0 else 0}% of total"
 
@@ -59,13 +33,13 @@ def get_dashboard_data(db: Session) -> admin_schema.ExecutiveDashboardResponse:
         admin_schema.StatCard(title="Completed", value=str(completed_projects), description=get_percentage(completed_projects, total_projects)),
     ]
 
-    # 2. --- Strategic Themes Progress ---
-    themes_data = sorted(all_projects, key=lambda p: p.phase_progress if p.phase_progress is not None else -1, reverse=True)[:4]
+    # 2. --- Strategic Themes Progress (Sort by the phase-based progress) ---
+    themes_data = sorted(all_projects, key=lambda p: p.progress if p.progress is not None else -1, reverse=True)[:4]
     themes_data = [
         admin_schema.ThemeProgress(
             id=str(p.id),
             name=f"{p.name} ({p.key})",
-            progress=int(p.phase_progress if p.phase_progress is not None else 0)
+            progress=int(p.progress)
         ) for p in themes_data
     ]
 
@@ -96,7 +70,7 @@ def get_dashboard_data(db: Session) -> admin_schema.ExecutiveDashboardResponse:
             priority=priority
         ))
 
-    # 4. --- Recent Activity (Pulls real data) ---
+    # 4. --- Recent Activity (remains the same) ---
     now = datetime.utcnow()
     
     def format_time_ago(dt: datetime):
@@ -138,4 +112,5 @@ def get_dashboard_data(db: Session) -> admin_schema.ExecutiveDashboardResponse:
         themes=themes_data,
         deadlines=deadlines_data,
         activities=activities_data,
+        all_projects=all_projects, # <-- POPULATED
     )

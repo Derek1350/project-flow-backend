@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from typing import List
 from enum import Enum
 from datetime import date
+from .project import ProjectWithDetails # <-- Import for portfolio table
 
 # Stat Card
 class StatCard(BaseModel):
@@ -45,3 +46,4 @@ class ExecutiveDashboardResponse(BaseModel):
     themes: List[ThemeProgress]
     deadlines: List[Deadline]
     activities: List[Activity]
+    all_projects: List[ProjectWithDetails] # <-- ADDED FOR PORTFOLIO VIEW

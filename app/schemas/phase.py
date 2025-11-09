@@ -26,6 +26,7 @@ class Phase(PhaseBase):
     project_id: uuid.UUID
     order: int
     status: PhaseStatus
+    progress: Optional[float] = None # <-- ADDED
 
     class Config:
         from_attributes = True
